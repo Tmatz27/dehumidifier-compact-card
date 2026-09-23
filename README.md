@@ -71,5 +71,6 @@ The card reads and writes standard `humidifier` domain attributes/services:
 - `mode` / `available_modes` → fan speed stepper and `humidifier.set_mode`
 - `state` → power toggle via `humidifier.turn_on` / `humidifier.turn_off`
 
-No build step is required — it's a single dependency-free JS file that reuses Home Assistant's
-own bundled `LitElement`.
+No build step is required — it's a single dependency-free JS file implemented as a plain Web
+Component (no `LitElement`/`lit-html` dependency), so it registers reliably regardless of Home
+Assistant's internal frontend load order.
