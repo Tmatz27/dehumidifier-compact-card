@@ -18,25 +18,46 @@
   const CARD_STYLES = `
     :host {
       --accent-color: var(--state-humidifier-on-color, #4c8bf5);
+      --accent-soft: rgba(76, 139, 245, 0.16);
+      --accent-soft: color-mix(in srgb, var(--accent-color) 16%, transparent);
+      --accent-glow: rgba(76, 139, 245, 0.45);
+      --accent-glow: color-mix(in srgb, var(--accent-color) 45%, transparent);
+      --panel-bg: var(--secondary-background-color, rgba(127, 127, 127, 0.08));
+      --well-bg: rgba(0, 0, 0, 0.16);
+      --well-bg: color-mix(in srgb, var(--primary-text-color) 8%, transparent);
+      --track-color: var(--divider-color, #3a3a3a);
     }
     ha-card {
-      padding: 16px;
-      border-radius: 20px;
+      padding: 18px;
+      border-radius: 24px;
       overflow: hidden;
+      box-shadow: 0 10px 28px -16px rgba(0, 0, 0, 0.5);
     }
     .header {
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 16px;
+      margin-bottom: 18px;
     }
-    .header > ha-icon {
-      --mdc-icon-size: 28px;
-      color: var(--paper-item-icon-color, #8a8a8a);
+    .icon-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--panel-bg);
+      color: var(--secondary-text-color);
       flex-shrink: 0;
+      transition: background 0.25s, color 0.25s, box-shadow 0.25s;
     }
-    .header > ha-icon.on {
+    .icon-avatar ha-icon {
+      --mdc-icon-size: 24px;
+    }
+    .icon-avatar.on {
+      background: var(--accent-soft);
       color: var(--accent-color);
+      box-shadow: 0 0 0 1px var(--accent-soft), 0 6px 16px -4px var(--accent-glow);
     }
     .titles {
       flex: 1;
@@ -45,84 +66,100 @@
     .name {
       font-size: 16px;
       font-weight: 600;
+      letter-spacing: 0.1px;
       color: var(--primary-text-color);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
     .mode-badge {
-      font-size: 12px;
-      color: var(--secondary-text-color);
-      margin-top: 2px;
+      display: inline-flex;
+      margin-top: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      color: var(--accent-color);
+      background: var(--accent-soft);
+      padding: 2px 8px;
+      border-radius: 999px;
       cursor: pointer;
-      text-transform: capitalize;
     }
-    .humidity-badge {
+    .humidity-pill {
       display: flex;
       align-items: center;
       gap: 4px;
-      font-size: 15px;
-      font-weight: 600;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: var(--panel-bg);
+      font-size: 14px;
+      font-weight: 700;
       color: var(--primary-text-color);
       flex-shrink: 0;
     }
-    .humidity-badge ha-icon {
-      --mdc-icon-size: 18px;
+    .humidity-pill ha-icon {
+      --mdc-icon-size: 16px;
       color: var(--accent-color);
     }
     .power-btn {
-      width: 36px;
-      height: 36px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       border: none;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--secondary-background-color, #2c2c2c);
+      background: var(--panel-bg);
       color: var(--secondary-text-color);
       cursor: pointer;
-      margin-left: 4px;
+      margin-left: 2px;
       flex-shrink: 0;
-      transition: background 0.2s, color 0.2s;
+      transition: background 0.25s, color 0.25s, box-shadow 0.25s;
       padding: 0;
     }
     .power-btn ha-icon {
       --mdc-icon-size: 20px;
     }
     .power-btn.on {
-      background: var(--accent-color);
+      background: linear-gradient(135deg, var(--accent-color), var(--accent-color));
       color: #fff;
+      box-shadow: 0 6px 16px -4px var(--accent-glow);
     }
 
-    .section {
-      margin-bottom: 14px;
+    .panel {
+      background: var(--panel-bg);
+      border-radius: 18px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
       transition: opacity 0.2s;
     }
-    .section.disabled {
-      opacity: 0.55;
-    }
-    .section:last-child {
+    .panel:last-child {
       margin-bottom: 0;
     }
+    .panel.disabled {
+      opacity: 0.5;
+    }
     .section-label {
-      font-size: 13px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
       color: var(--secondary-text-color);
-      margin-bottom: 6px;
-      font-weight: 500;
+      margin-bottom: 10px;
     }
 
     .stepper-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
     }
     .step-btn {
-      width: 32px;
-      height: 32px;
+      width: 34px;
+      height: 34px;
       border-radius: 50%;
       border: none;
-      background: var(--secondary-background-color, #2c2c2c);
+      background: var(--well-bg);
       color: var(--primary-text-color);
       font-size: 18px;
       line-height: 1;
@@ -130,7 +167,7 @@
       padding: 0;
     }
     .value {
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 700;
       color: var(--primary-text-color);
     }
@@ -141,7 +178,7 @@
       appearance: none;
       height: 6px;
       border-radius: 3px;
-      background: var(--divider-color, #3a3a3a);
+      background: var(--track-color);
       outline: none;
       margin: 0;
     }
@@ -154,7 +191,7 @@
       background: var(--accent-color);
       cursor: pointer;
       border: 3px solid var(--card-background-color, #1c1c1c);
-      box-shadow: 0 0 0 1px var(--accent-color);
+      box-shadow: 0 2px 8px -1px var(--accent-glow);
     }
     input[type="range"]::-moz-range-thumb {
       width: 20px;
@@ -163,23 +200,49 @@
       background: var(--accent-color);
       cursor: pointer;
       border: 3px solid var(--card-background-color, #1c1c1c);
-      box-shadow: 0 0 0 1px var(--accent-color);
+      box-shadow: 0 2px 8px -1px var(--accent-glow);
     }
 
-    .fan-section {
+    .fan-header {
       display: flex;
       align-items: center;
       gap: 8px;
+      margin-bottom: 10px;
     }
-    .fan-section > ha-icon {
-      --mdc-icon-size: 20px;
+    .fan-header ha-icon {
+      --mdc-icon-size: 18px;
       color: var(--secondary-text-color);
       flex-shrink: 0;
     }
-    .fan-section .section-label {
+    .fan-header .section-label {
       margin-bottom: 0;
-      flex: 1;
     }
+
+    .segmented {
+      display: flex;
+      gap: 4px;
+      background: var(--well-bg);
+      border-radius: 12px;
+      padding: 4px;
+    }
+    .segment {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: var(--secondary-text-color);
+      font-size: 13px;
+      font-weight: 700;
+      padding: 9px 0;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+    }
+    .segment.active {
+      background: var(--accent-color);
+      color: #fff;
+      box-shadow: 0 3px 10px -2px var(--accent-glow);
+    }
+
     .mode-stepper {
       display: flex;
       align-items: center;
@@ -190,7 +253,7 @@
       height: 28px;
       border-radius: 50%;
       border: none;
-      background: var(--secondary-background-color, #2c2c2c);
+      background: var(--well-bg);
       color: var(--primary-text-color);
       display: flex;
       align-items: center;
@@ -205,7 +268,7 @@
       min-width: 52px;
       text-align: center;
       font-size: 14px;
-      font-weight: 600;
+      font-weight: 700;
       color: var(--accent-color);
     }
 
@@ -340,11 +403,16 @@
         ? this._hass.states[this._config.operation_mode_entity]
         : null;
 
+      const useSegmented = modes.length > 0 && modes.length <= 5;
+      const currentMode = stateObj.attributes.mode;
+
       root.innerHTML = `
         <style>${CARD_STYLES}</style>
         <ha-card>
           <div class="header">
-            <ha-icon icon="${escapeHtml(icon)}" class="${isOn ? "on" : ""}"></ha-icon>
+            <div class="icon-avatar ${isOn ? "on" : ""}">
+              <ha-icon icon="${escapeHtml(icon)}"></ha-icon>
+            </div>
             <div class="titles">
               <div class="name">${escapeHtml(name)}</div>
               ${
@@ -353,7 +421,7 @@
                   : ""
               }
             </div>
-            <div class="humidity-badge">
+            <div class="humidity-pill">
               <ha-icon icon="mdi:water-percent"></ha-icon>
               <span>${currentHumidity != null ? `${currentHumidity}%` : "--"}</span>
             </div>
@@ -362,7 +430,7 @@
             </button>
           </div>
 
-          <div class="section target-section ${!isOn ? "disabled" : ""}">
+          <div class="panel target-section ${!isOn ? "disabled" : ""}">
             <div class="section-label">Set Humidity</div>
             <div class="stepper-row">
               <button class="step-btn" id="humidity-dec" aria-label="Decrease humidity">−</button>
@@ -382,14 +450,33 @@
           ${
             modes.length
               ? `
-            <div class="section fan-section ${!isOn ? "disabled" : ""}">
-              <ha-icon icon="mdi:fan"></ha-icon>
-              <div class="section-label">Fan Speed</div>
-              <div class="mode-stepper">
-                <button id="mode-prev" aria-label="Previous fan speed"><ha-icon icon="mdi:chevron-left"></ha-icon></button>
-                <span class="mode-value">${escapeHtml(modeLabel)}</span>
-                <button id="mode-next" aria-label="Next fan speed"><ha-icon icon="mdi:chevron-right"></ha-icon></button>
+            <div class="panel fan-section ${!isOn ? "disabled" : ""}">
+              <div class="fan-header">
+                <ha-icon icon="mdi:fan"></ha-icon>
+                <div class="section-label">Fan Speed</div>
               </div>
+              ${
+                useSegmented
+                  ? `
+                <div class="segmented" id="mode-segmented">
+                  ${modes
+                    .map(
+                      (m) =>
+                        `<button class="segment ${m === currentMode ? "active" : ""}" data-mode="${escapeHtml(
+                          m
+                        )}">${escapeHtml(formatMode(m))}</button>`
+                    )
+                    .join("")}
+                </div>
+              `
+                  : `
+                <div class="mode-stepper">
+                  <button id="mode-prev" aria-label="Previous fan speed"><ha-icon icon="mdi:chevron-left"></ha-icon></button>
+                  <span class="mode-value">${escapeHtml(modeLabel)}</span>
+                  <button id="mode-next" aria-label="Next fan speed"><ha-icon icon="mdi:chevron-right"></ha-icon></button>
+                </div>
+              `
+              }
             </div>
           `
               : ""
@@ -418,7 +505,24 @@
       if (incBtn) incBtn.addEventListener("click", () => this._changeHumidity(step));
 
       const slider = root.getElementById("humidity-slider");
-      if (slider) slider.addEventListener("change", (ev) => this._setHumidity(Number(ev.target.value)));
+      const valueEl = root.querySelector(".target-section .value");
+      if (slider) {
+        this._updateSliderFill(slider);
+        slider.addEventListener("input", (ev) => {
+          this._updateSliderFill(ev.target);
+          if (valueEl) valueEl.textContent = `${ev.target.value}%`;
+        });
+        slider.addEventListener("change", (ev) => this._setHumidity(Number(ev.target.value)));
+      }
+
+      const segmented = root.getElementById("mode-segmented");
+      if (segmented) {
+        segmented.addEventListener("click", (ev) => {
+          const btn = ev.target.closest(".segment");
+          if (!btn) return;
+          this._setMode(btn.dataset.mode);
+        });
+      }
 
       const modePrev = root.getElementById("mode-prev");
       if (modePrev) modePrev.addEventListener("click", () => this._changeMode(-1));
@@ -433,6 +537,14 @@
           this._openMoreInfo();
         });
       }
+    }
+
+    _updateSliderFill(slider) {
+      const min = Number(slider.min);
+      const max = Number(slider.max);
+      const value = Number(slider.value);
+      const pct = max > min ? clamp(((value - min) / (max - min)) * 100, 0, 100) : 0;
+      slider.style.background = `linear-gradient(to right, var(--accent-color) ${pct}%, var(--track-color) ${pct}%)`;
     }
 
     _togglePower() {
@@ -456,6 +568,14 @@
       this._hass.callService("humidifier", "set_humidity", {
         entity_id: this._config.entity,
         humidity: value,
+      });
+    }
+
+    _setMode(mode) {
+      if (!mode) return;
+      this._hass.callService("humidifier", "set_mode", {
+        entity_id: this._config.entity,
+        mode,
       });
     }
 
