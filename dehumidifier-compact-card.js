@@ -298,8 +298,32 @@
       gap: 12px;
       padding: 8px 0;
     }
-    ha-textfield {
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+    .field > span {
+      font-size: 12px;
+      color: var(--secondary-text-color);
+    }
+    .field input {
+      font: inherit;
+      font-size: 15px;
+      color: var(--primary-text-color);
+      background: var(--input-fill-color, var(--secondary-background-color, rgba(127, 127, 127, 0.12)));
+      border: none;
+      border-bottom: 1px solid var(--input-idle-line-color, var(--divider-color, #666));
+      border-radius: 4px 4px 0 0;
+      padding: 12px;
+      outline: none;
       width: 100%;
+      box-sizing: border-box;
+    }
+    .field input:focus {
+      border-bottom: 2px solid var(--primary-color, #03a9f4);
+      padding-bottom: 11px;
     }
     .section-title {
       font-size: 13px;
@@ -316,15 +340,15 @@
       display: flex;
       gap: 12px;
     }
-    .range-row ha-textfield {
+    .range-row .field {
       flex: 1;
     }
     .color-row {
       display: flex;
-      align-items: center;
+      align-items: flex-end;
       gap: 10px;
     }
-    .color-row ha-textfield {
+    .color-row .field {
       flex: 1;
     }
     input[type="color"] {
@@ -372,6 +396,12 @@
   };
 
   const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+  const toSixDigitHex = (hex) => {
+    if (!hex) return "";
+    const m = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(hex);
+    return m ? `#${m[1]}${m[1]}${m[2]}${m[2]}${m[3]}${m[3]}` : hex;
+  };
 
   const escapeHtml = (str) =>
     String(str).replace(/[&<>"']/g, (c) => ({
@@ -451,16 +481,23 @@
     // Effective min/max: an explicit config override is a hard limit (for
     // devices whose reported min_humidity/max_humidity don't match the real
     // hardware range); otherwise fall back to what the entity reports.
+    get _range() {
+      const attrs = (this._stateObj && this._stateObj.attributes) || {};
+      const entityMin = attrs.min_humidity ?? 30;
+      const entityMax = attrs.max_humidity ?? 80;
+      const cfg = this._config || {};
+      const min = cfg.min_humidity != null ? cfg.min_humidity : entityMin;
+      const max = cfg.max_humidity != null ? cfg.max_humidity : entityMax;
+      // An inverted override (e.g. mid-edit in the editor) would break the slider.
+      return min < max ? { min, max } : { min: entityMin, max: entityMax };
+    }
+
     get _min() {
-      const stateObj = this._stateObj;
-      const configMin = this._config && this._config.min_humidity;
-      return configMin != null ? configMin : (stateObj && stateObj.attributes.min_humidity) ?? 30;
+      return this._range.min;
     }
 
     get _max() {
-      const stateObj = this._stateObj;
-      const configMax = this._config && this._config.max_humidity;
-      return configMax != null ? configMax : (stateObj && stateObj.attributes.max_humidity) ?? 80;
+      return this._range.max;
     }
 
     _render() {
@@ -734,33 +771,46 @@
       const root = this.shadowRoot;
 
       if (!this._built) {
+        // Text/number fields are native inputs on purpose: HA's internal
+        // ha-textfield isn't registered in every frontend version, and an
+        // unregistered element silently renders nothing.
+        const hasIconPicker = !!customElements.get("ha-icon-picker");
         root.innerHTML = `
           <style>${EDITOR_STYLES}</style>
           <div class="form">
             <ha-entity-picker id="entity" label="Entity (required)" allow-custom-entity></ha-entity-picker>
-            <ha-textfield id="name" label="Name (optional)"></ha-textfield>
-            <ha-icon-picker id="icon" label="Icon (optional)"></ha-icon-picker>
+            <label class="field"><span>Name (optional)</span><input id="name" type="text" /></label>
+            ${
+              hasIconPicker
+                ? `<ha-icon-picker id="icon" label="Icon (optional)"></ha-icon-picker>`
+                : `<label class="field"><span>Icon (optional, e.g. mdi:air-humidifier)</span><input id="icon" type="text" /></label>`
+            }
 
             <div class="section-title">Accent color</div>
             <div class="color-row">
-              <input type="color" id="accent-swatch" />
-              <ha-textfield id="accent-hex" label="Hex code (optional)" placeholder="${DEFAULT_ACCENT}"></ha-textfield>
+              <input type="color" id="accent-swatch" aria-label="Accent color" />
+              <label class="field"><span>Hex code (optional)</span><input id="accent-hex" type="text" placeholder="${DEFAULT_ACCENT}" /></label>
               <button type="button" class="reset-btn" id="accent-reset">Reset</button>
             </div>
             <div class="hint">Leave blank to use your theme's default color.</div>
 
             <div class="section-title">Humidity range</div>
             <div class="range-row">
-              <ha-textfield id="min-humidity" type="number" label="Minimum %"></ha-textfield>
-              <ha-textfield id="max-humidity" type="number" label="Maximum %"></ha-textfield>
+              <label class="field"><span>Minimum %</span><input id="min-humidity" type="number" inputmode="numeric" min="0" max="100" /></label>
+              <label class="field"><span>Maximum %</span><input id="max-humidity" type="number" inputmode="numeric" min="0" max="100" /></label>
+              <label class="field"><span>Step</span><input id="step" type="number" inputmode="numeric" min="1" max="50" /></label>
             </div>
             <div class="hint">
-              Leave blank to auto-detect from the device. Set both to hard-limit the slider and
+              Leave blank to auto-detect from the device. Set min/max to hard-limit the slider and
               +/- buttons, e.g. for a device that reports a wider range than it can actually reach.
             </div>
 
-            <ha-textfield id="step" type="number" label="Humidity step (optional)"></ha-textfield>
-            <ha-entity-picker id="opmode" label="Operation mode entity (optional, e.g. select.xxx)" allow-custom-entity></ha-entity-picker>
+            <div class="section-title">Operation mode (optional)</div>
+            <ha-entity-picker id="opmode" label="Operation mode entity, e.g. select.xxx" allow-custom-entity></ha-entity-picker>
+            <div class="hint">
+              A separate entity for the device's operating mode (e.g. Manual / Auto / Smart), shown as a
+              small tag under the name. Tap the tag to change it.
+            </div>
           </div>
         `;
 
@@ -770,7 +820,12 @@
 
         root.getElementById("name").addEventListener("input", (ev) => this._update({ name: ev.target.value }));
 
-        root.getElementById("icon").addEventListener("value-changed", (ev) => this._update({ icon: ev.detail.value }));
+        const iconField = root.getElementById("icon");
+        if (hasIconPicker) {
+          iconField.addEventListener("value-changed", (ev) => this._update({ icon: ev.detail.value }));
+        } else {
+          iconField.addEventListener("input", (ev) => this._update({ icon: ev.target.value.trim() }));
+        }
 
         const hexPattern = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
         const accentSwatch = root.getElementById("accent-swatch");
@@ -786,7 +841,7 @@
             this._update({ accent_color: undefined });
             accentSwatch.value = DEFAULT_ACCENT;
           } else if (hexPattern.test(v)) {
-            accentSwatch.value = v;
+            accentSwatch.value = toSixDigitHex(v);
             this._update({ accent_color: v });
           }
         });
@@ -821,19 +876,27 @@
       entityPicker.hass = this._hass;
       entityPicker.value = this._config.entity || "";
 
-      root.getElementById("name").value = this._config.name || "";
+      // Only write when different so re-renders don't reset the cursor mid-typing.
+      const sync = (id, value) => {
+        const el = root.getElementById(id);
+        const v = value == null ? "" : String(value);
+        if (el.value !== v) el.value = v;
+      };
 
-      const iconPicker = root.getElementById("icon");
-      iconPicker.hass = this._hass;
-      iconPicker.value = this._config.icon || "";
+      sync("name", this._config.name);
 
-      root.getElementById("accent-swatch").value = this._config.accent_color || DEFAULT_ACCENT;
-      root.getElementById("accent-hex").value = this._config.accent_color || "";
+      const iconField = root.getElementById("icon");
+      iconField.hass = this._hass;
+      sync("icon", this._config.icon);
 
-      root.getElementById("min-humidity").value = this._config.min_humidity ?? "";
-      root.getElementById("max-humidity").value = this._config.max_humidity ?? "";
+      sync("accent-swatch", toSixDigitHex(this._config.accent_color) || DEFAULT_ACCENT);
+      if (root.getElementById("accent-hex") !== root.activeElement) {
+        sync("accent-hex", this._config.accent_color);
+      }
 
-      root.getElementById("step").value = this._config.humidity_step || "";
+      sync("min-humidity", this._config.min_humidity);
+      sync("max-humidity", this._config.max_humidity);
+      sync("step", this._config.humidity_step);
 
       const opModePicker = root.getElementById("opmode");
       opModePicker.hass = this._hass;
