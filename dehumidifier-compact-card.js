@@ -15,16 +15,24 @@
  * or load order.
  */
 (() => {
+  const DEFAULT_ACCENT = "#3f6b4a";
+
   const CARD_STYLES = `
     :host {
-      --accent-color: var(--state-humidifier-on-color, #4c8bf5);
-      --accent-soft: rgba(76, 139, 245, 0.16);
+      /* Organic-modern / biophilic palette: a neutral, warm-toned base (bark,
+         stone) with a single accent color (default: forest green) that's the
+         only thing allowed to "pop". Override --card-accent via the accent_color
+         config option; everything else stays theme-driven so it sits well
+         alongside the rest of a dashboard. */
+      --accent-color: var(--card-accent, var(--state-humidifier-on-color, ${DEFAULT_ACCENT}));
+      --accent-soft: rgba(63, 107, 74, 0.16);
       --accent-soft: color-mix(in srgb, var(--accent-color) 16%, transparent);
-      --accent-glow: rgba(76, 139, 245, 0.45);
+      --accent-glow: rgba(63, 107, 74, 0.45);
       --accent-glow: color-mix(in srgb, var(--accent-color) 45%, transparent);
-      --panel-bg: var(--secondary-background-color, rgba(127, 127, 127, 0.08));
-      --well-bg: rgba(0, 0, 0, 0.16);
-      --well-bg: color-mix(in srgb, var(--primary-text-color) 8%, transparent);
+      --panel-bg: var(--secondary-background-color, rgba(124, 106, 82, 0.08));
+      --panel-bg: color-mix(in srgb, #7c6a52 7%, var(--card-background-color, var(--secondary-background-color, #26241f)));
+      --well-bg: rgba(51, 54, 43, 0.14);
+      --well-bg: color-mix(in srgb, #33362b 14%, var(--card-background-color, var(--secondary-background-color, #26241f)));
       --track-color: var(--divider-color, #3a3a3a);
     }
     ha-card {
@@ -165,6 +173,11 @@
       line-height: 1;
       cursor: pointer;
       padding: 0;
+      transition: opacity 0.2s;
+    }
+    .step-btn:disabled {
+      opacity: 0.35;
+      cursor: default;
     }
     .value {
       font-size: 24px;
@@ -288,6 +301,67 @@
     ha-textfield {
       width: 100%;
     }
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--primary-text-color);
+      margin-top: 4px;
+    }
+    .hint {
+      font-size: 12px;
+      color: var(--secondary-text-color);
+      margin-top: -6px;
+    }
+    .range-row {
+      display: flex;
+      gap: 12px;
+    }
+    .range-row ha-textfield {
+      flex: 1;
+    }
+    .color-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .color-row ha-textfield {
+      flex: 1;
+    }
+    input[type="color"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      border: none;
+      border-radius: 50%;
+      overflow: hidden;
+      cursor: pointer;
+      background: none;
+      flex-shrink: 0;
+    }
+    input[type="color"]::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+    input[type="color"]::-webkit-color-swatch {
+      border: 2px solid var(--divider-color, #444);
+      border-radius: 50%;
+    }
+    input[type="color"]::-moz-color-swatch {
+      border: 2px solid var(--divider-color, #444);
+      border-radius: 50%;
+    }
+    .reset-btn {
+      flex-shrink: 0;
+      border: none;
+      background: var(--secondary-background-color, rgba(127, 127, 127, 0.12));
+      color: var(--primary-text-color);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
   `;
 
   const formatMode = (mode) => {
@@ -374,9 +448,30 @@
       );
     }
 
+    // Effective min/max: an explicit config override is a hard limit (for
+    // devices whose reported min_humidity/max_humidity don't match the real
+    // hardware range); otherwise fall back to what the entity reports.
+    get _min() {
+      const stateObj = this._stateObj;
+      const configMin = this._config && this._config.min_humidity;
+      return configMin != null ? configMin : (stateObj && stateObj.attributes.min_humidity) ?? 30;
+    }
+
+    get _max() {
+      const stateObj = this._stateObj;
+      const configMax = this._config && this._config.max_humidity;
+      return configMax != null ? configMax : (stateObj && stateObj.attributes.max_humidity) ?? 80;
+    }
+
     _render() {
       const root = this.shadowRoot;
       if (!this._config || !this._hass) return;
+
+      if (this._config.accent_color) {
+        this.style.setProperty("--card-accent", this._config.accent_color);
+      } else {
+        this.style.removeProperty("--card-accent");
+      }
 
       const stateObj = this._stateObj;
       if (!stateObj) {
@@ -394,9 +489,11 @@
       const icon = this._config.icon || "mdi:air-humidifier";
       const currentHumidity = stateObj.attributes.current_humidity;
       const targetHumidity = stateObj.attributes.humidity;
-      const min = stateObj.attributes.min_humidity ?? 30;
-      const max = stateObj.attributes.max_humidity ?? 80;
+      const min = this._min;
+      const max = this._max;
       const step = this._step;
+      const atMin = targetHumidity != null && targetHumidity <= min;
+      const atMax = targetHumidity != null && targetHumidity >= max;
       const modes = stateObj.attributes.available_modes || [];
       const modeLabel = formatMode(stateObj.attributes.mode);
       const opModeEntity = this._config.operation_mode_entity
@@ -433,9 +530,9 @@
           <div class="panel target-section ${!isOn ? "disabled" : ""}">
             <div class="section-label">Set Humidity</div>
             <div class="stepper-row">
-              <button class="step-btn" id="humidity-dec" aria-label="Decrease humidity">−</button>
+              <button class="step-btn" id="humidity-dec" aria-label="Decrease humidity" ${atMin ? "disabled" : ""}>−</button>
               <div class="value">${targetHumidity != null ? `${targetHumidity}%` : "--"}</div>
-              <button class="step-btn" id="humidity-inc" aria-label="Increase humidity">+</button>
+              <button class="step-btn" id="humidity-inc" aria-label="Increase humidity" ${atMax ? "disabled" : ""}>+</button>
             </div>
             <input
               type="range"
@@ -443,7 +540,7 @@
               min="${min}"
               max="${max}"
               step="${step}"
-              value="${targetHumidity ?? min}"
+              value="${clamp(targetHumidity ?? min, min, max)}"
             />
           </div>
 
@@ -509,8 +606,11 @@
       if (slider) {
         this._updateSliderFill(slider);
         slider.addEventListener("input", (ev) => {
+          const v = Number(ev.target.value);
           this._updateSliderFill(ev.target);
-          if (valueEl) valueEl.textContent = `${ev.target.value}%`;
+          if (valueEl) valueEl.textContent = `${v}%`;
+          if (decBtn) decBtn.disabled = v <= Number(slider.min);
+          if (incBtn) incBtn.disabled = v >= Number(slider.max);
         });
         slider.addEventListener("change", (ev) => this._setHumidity(Number(ev.target.value)));
       }
@@ -558,8 +658,8 @@
     _changeHumidity(delta) {
       const stateObj = this._stateObj;
       if (!stateObj) return;
-      const min = stateObj.attributes.min_humidity ?? 0;
-      const max = stateObj.attributes.max_humidity ?? 100;
+      const min = this._min;
+      const max = this._max;
       const current = stateObj.attributes.humidity ?? min;
       this._setHumidity(clamp(current + delta, min, max));
     }
@@ -640,6 +740,25 @@
             <ha-entity-picker id="entity" label="Entity (required)" allow-custom-entity></ha-entity-picker>
             <ha-textfield id="name" label="Name (optional)"></ha-textfield>
             <ha-icon-picker id="icon" label="Icon (optional)"></ha-icon-picker>
+
+            <div class="section-title">Accent color</div>
+            <div class="color-row">
+              <input type="color" id="accent-swatch" />
+              <ha-textfield id="accent-hex" label="Hex code (optional)" placeholder="${DEFAULT_ACCENT}"></ha-textfield>
+              <button type="button" class="reset-btn" id="accent-reset">Reset</button>
+            </div>
+            <div class="hint">Leave blank to use your theme's default color.</div>
+
+            <div class="section-title">Humidity range</div>
+            <div class="range-row">
+              <ha-textfield id="min-humidity" type="number" label="Minimum %"></ha-textfield>
+              <ha-textfield id="max-humidity" type="number" label="Maximum %"></ha-textfield>
+            </div>
+            <div class="hint">
+              Leave blank to auto-detect from the device. Set both to hard-limit the slider and
+              +/- buttons, e.g. for a device that reports a wider range than it can actually reach.
+            </div>
+
             <ha-textfield id="step" type="number" label="Humidity step (optional)"></ha-textfield>
             <ha-entity-picker id="opmode" label="Operation mode entity (optional, e.g. select.xxx)" allow-custom-entity></ha-entity-picker>
           </div>
@@ -652,6 +771,39 @@
         root.getElementById("name").addEventListener("input", (ev) => this._update({ name: ev.target.value }));
 
         root.getElementById("icon").addEventListener("value-changed", (ev) => this._update({ icon: ev.detail.value }));
+
+        const hexPattern = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+        const accentSwatch = root.getElementById("accent-swatch");
+        const accentHex = root.getElementById("accent-hex");
+
+        accentSwatch.addEventListener("input", (ev) => {
+          accentHex.value = ev.target.value;
+          this._update({ accent_color: ev.target.value });
+        });
+        accentHex.addEventListener("input", (ev) => {
+          const v = ev.target.value.trim();
+          if (v === "") {
+            this._update({ accent_color: undefined });
+            accentSwatch.value = DEFAULT_ACCENT;
+          } else if (hexPattern.test(v)) {
+            accentSwatch.value = v;
+            this._update({ accent_color: v });
+          }
+        });
+        root.getElementById("accent-reset").addEventListener("click", () => {
+          accentHex.value = "";
+          accentSwatch.value = DEFAULT_ACCENT;
+          this._update({ accent_color: undefined });
+        });
+
+        root.getElementById("min-humidity").addEventListener("input", (ev) => {
+          const v = ev.target.value;
+          this._update({ min_humidity: v !== "" ? Number(v) : undefined });
+        });
+        root.getElementById("max-humidity").addEventListener("input", (ev) => {
+          const v = ev.target.value;
+          this._update({ max_humidity: v !== "" ? Number(v) : undefined });
+        });
 
         root.getElementById("step").addEventListener("input", (ev) => {
           const v = ev.target.value;
@@ -674,6 +826,12 @@
       const iconPicker = root.getElementById("icon");
       iconPicker.hass = this._hass;
       iconPicker.value = this._config.icon || "";
+
+      root.getElementById("accent-swatch").value = this._config.accent_color || DEFAULT_ACCENT;
+      root.getElementById("accent-hex").value = this._config.accent_color || "";
+
+      root.getElementById("min-humidity").value = this._config.min_humidity ?? "";
+      root.getElementById("max-humidity").value = this._config.max_humidity ?? "";
 
       root.getElementById("step").value = this._config.humidity_step || "";
 

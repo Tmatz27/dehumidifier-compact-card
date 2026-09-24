@@ -48,6 +48,9 @@ type: custom:dehumidifier-compact-card
 entity: humidifier.dehumidifier
 name: Dehumidifier
 icon: mdi:air-humidifier
+accent_color: "#3f6b4a"
+min_humidity: 50
+max_humidity: 70
 humidity_step: 5
 operation_mode_entity: select.dehumidifier_operation_mode
 ```
@@ -59,8 +62,13 @@ operation_mode_entity: select.dehumidifier_operation_mode
 | `entity`                 | string | **required**                                 | A `humidifier.*` entity.                                                     |
 | `name`                   | string | entity's `friendly_name`                     | Overrides the displayed name.                                                |
 | `icon`                   | string | `mdi:air-humidifier`                         | Overrides the header icon.                                                   |
+| `accent_color`           | string (hex) | theme's `--state-humidifier-on-color`, else a forest green | Overrides the single accent color used for buttons, the active fan-speed segment, the slider fill, and the power-on glow. Everything else (text, panel backgrounds) stays theme-driven. |
+| `min_humidity`           | number | entity's `min_humidity` attribute, else `30` | Hard lower limit for the slider and `-` button. Devices that misreport their real range (e.g. a wider range than the hardware can actually reach) can override it here — the card will not let you go, or look like you can go, past it. |
+| `max_humidity`           | number | entity's `max_humidity` attribute, else `80` | Hard upper limit for the slider and `+` button. Same idea as `min_humidity`. |
 | `humidity_step`          | number | entity's `target_humidity_step` or `5`       | Step size for the +/- buttons and slider.                                    |
 | `operation_mode_entity`  | string | none                                          | Any entity (e.g. a `select.` for Manual/Auto) shown as a small badge under the name; tapping it opens its more-info dialog. |
+
+All of these (except `entity`) are also available in the visual card editor — no YAML required.
 
 ## How it works
 
